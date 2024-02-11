@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+
+[project]
+name = "mlx_embedding_models"
+version="0.0.6"
+authors = [
+    {name = "Benjamin Anderson", email = "ben@trytaylor.ai"},
+]
+description = "Python utility for text embeddings in MLX."
+readme = "README.md"
+requires-python = ">=3.9"
+keywords = []
+license = {text = ""}
+classifiers = []
+dependencies = [
+    "torch",
+    "transformers",
+    "mlx",
+    "awkward",
+    "numpy",
+    "tqdm"
+]

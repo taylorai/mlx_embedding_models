@@ -1,0 +1,5 @@
+transformers
+mlx
+awkward
+numpy
+tqdm
