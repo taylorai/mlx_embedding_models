@@ -1,5 +1,5 @@
 transformers
-mlx
+mlx>=0.3.0
 awkward
 numpy
 tqdm
