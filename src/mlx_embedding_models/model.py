@@ -6,8 +6,34 @@ from typing import Tuple, Union
 import mlx.core as mx
 import mlx.nn as nn
 import numpy as np
-from transformers import AutoConfig, BertConfig, RobertaConfig
-from .load_utils import convert
+from transformers import AutoConfig, BertConfig, RobertaConfig, DistilBertConfig
+from .load_utils import convert, convert_distilbert
+
+
+class FastAttention(nn.Module):
+    def __init__(self, config: Union[BertConfig, RobertaConfig]):
+        super().__init__()
+        self.num_heads = config.num_attention_heads
+        self.query_proj = nn.Linear(config.hidden_size, use_bias=True)
+        self.key_proj = nn.Linear(config.hidden_size, use_bias=True)
+        self.value_proj = nn.Linear(config.hidden_size, use_bias=True)
+        self.out_proj = nn.Linear(config.hidden_size, use_bias=True)
+        self.scale = 1 / (config.hidden_size ** 0.5)
+    
+    def shape(self, tensor: mx.array):
+        B, L, D = tensor.shape
+        tensor = tensor.reshape(B, L, self.num_heads, D // self.num_heads)
+        return tensor.transpose(0, 2, 1, 3)
+
+    def __call__(self, x, mask):
+        q = self.query_proj(x)
+        k = self.key_proj(x)
+        v = self.value_proj(x)
+        q, k, v = map(self.shape, (q, k, v))
+        attn_out = mx.scaled_dot_product_attention(
+            q, k, v, mask, self.scale
+        )
+        return self.out_proj(attn_out)
 
 class TransformerEncoderLayer(nn.Module):
     """
@@ -24,11 +50,12 @@ class TransformerEncoderLayer(nn.Module):
     ):
         super().__init__()
         # mlp_dims = mlp_dims or dims * 4
-        self.attention = nn.MultiHeadAttention(
-            config.hidden_size, 
-            config.num_attention_heads, 
-            bias=True
-        )
+        # self.attention = nn.MultiHeadAttention(
+        #     config.hidden_size, 
+        #     config.num_attention_heads, 
+        #     bias=True
+        # )
+        self.attention = FastAttention(config)
         self.ln1 = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         self.ln2 = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         self.linear1 = nn.Linear(config.hidden_size, config.intermediate_size)
@@ -82,15 +109,35 @@ class BertEmbeddings(nn.Module):
 
         embeddings = position + words + token_types
         return self.norm(embeddings)
+    
+class LMHead(nn.Module):
+    def __init__(self, config: Union[BertConfig, RobertaConfig]):
+        super().__init__()
+        self.dense = nn.Linear(config.hidden_size, config.hidden_size, bias=True)
+        self.gelu = nn.GELU()
+        self.ln = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
+        self.decoder = nn.Linear(config.hidden_size, config.vocab_size, bias=True)
 
+    def __call__(self, x: mx.array) -> mx.array:
+        x = self.dense(x)
+        x = self.gelu(x)
+        x = self.ln(x)
+        x = self.decoder(x)
+        return x
 
 class Bert(nn.Module):
-    def __init__(self, config: Union[BertConfig, RobertaConfig]):
+    def __init__(self, config: Union[BertConfig, RobertaConfig], lm_head: bool = False):
         self.embeddings = BertEmbeddings(config)
         self.encoder = TransformerEncoder(
             config
         )
-        self.pooler = nn.Linear(config.hidden_size, config.hidden_size)
+        
+        if lm_head:
+            self.lm_head = LMHead(config)
+            self.pooler = None
+        else:
+            self.lm_head = None
+            self.pooler = nn.Linear(config.hidden_size, config.hidden_size)
 
     def __call__(
         self,
@@ -105,19 +152,31 @@ class Bert(nn.Module):
             attention_mask = mx.log(attention_mask)
             attention_mask = mx.expand_dims(attention_mask, (1, 2))
 
-        y = self.encoder(x, attention_mask)
-        return y, mx.tanh(self.pooler(y[:, 0]))
+        # mlm output
+        if self.lm_head is not None:
+            y = self.encoder(x, attention_mask)
+            return self.lm_head(y)
+        
+        # pooler output
+        else:
+            y = self.encoder(x, attention_mask)
+            return y, mx.tanh(self.pooler(y[:, 0]))
     
     @classmethod
-    def from_pretrained(cls, model_path: str):
+    def from_pretrained(cls, model_path: str, lm_head: bool = False):
         config = AutoConfig.from_pretrained(model_path)
         # check if it's a bert or roberta model
         if isinstance(config, BertConfig):
             config = BertConfig.from_pretrained(model_path)
+            tensors = convert(model_path, lm_head=lm_head)
         elif isinstance(config, RobertaConfig):
             config = RobertaConfig.from_pretrained(model_path)
+            tensors = convert(model_path, lm_head=lm_head)
+        elif isinstance(config, DistilBertConfig):
+            config = DistilBertConfig.from_pretrained(model_path)
+            tensors = convert_distilbert(model_path, lm_head=lm_head)
         model = cls(config)
-        tensors = convert(model_path)
+        
         # use npz extension
         with tempfile.NamedTemporaryFile(suffix=".npz") as f:
             np.savez(f, **tensors)
