@@ -14,10 +14,10 @@ class FastAttention(nn.Module):
     def __init__(self, config: Union[BertConfig, RobertaConfig]):
         super().__init__()
         self.num_heads = config.num_attention_heads
-        self.query_proj = nn.Linear(config.hidden_size, use_bias=True)
-        self.key_proj = nn.Linear(config.hidden_size, use_bias=True)
-        self.value_proj = nn.Linear(config.hidden_size, use_bias=True)
-        self.out_proj = nn.Linear(config.hidden_size, use_bias=True)
+        self.query_proj = nn.Linear(config.hidden_size, bias=True)
+        self.key_proj = nn.Linear(config.hidden_size, bias=True)
+        self.value_proj = nn.Linear(config.hidden_size, bias=True)
+        self.out_proj = nn.Linear(config.hidden_size, bias=True)
         self.scale = 1 / (config.hidden_size ** 0.5)
     
     def shape(self, tensor: mx.array):
