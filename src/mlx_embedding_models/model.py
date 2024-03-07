@@ -10,30 +10,30 @@ from transformers import AutoConfig, BertConfig, RobertaConfig, DistilBertConfig
 from .load_utils import convert, convert_distilbert
 
 
-class FastAttention(nn.Module):
-    def __init__(self, config: Union[BertConfig, RobertaConfig]):
-        super().__init__()
-        self.num_heads = config.num_attention_heads
-        self.query_proj = nn.Linear(config.hidden_size, config.hidden_size, bias=True)
-        self.key_proj = nn.Linear(config.hidden_size, config.hidden_size, bias=True)
-        self.value_proj = nn.Linear(config.hidden_size, config.hidden_size, bias=True)
-        self.out_proj = nn.Linear(config.hidden_size, config.hidden_size, bias=True)
-        self.scale = 1 / (config.hidden_size ** 0.5)
+# class FastAttention(nn.Module):
+#     def __init__(self, config: Union[BertConfig, RobertaConfig]):
+#         super().__init__()
+#         self.num_heads = config.num_attention_heads
+#         self.query_proj = nn.Linear(config.hidden_size, config.hidden_size, bias=True)
+#         self.key_proj = nn.Linear(config.hidden_size, config.hidden_size, bias=True)
+#         self.value_proj = nn.Linear(config.hidden_size, config.hidden_size, bias=True)
+#         self.out_proj = nn.Linear(config.hidden_size, config.hidden_size, bias=True)
+#         self.scale = 1 / (config.hidden_size ** 0.5)
     
-    def shape(self, tensor: mx.array):
-        B, L, D = tensor.shape
-        tensor = tensor.reshape(B, L, self.num_heads, D // self.num_heads)
-        return tensor.transpose(0, 2, 1, 3)
+#     def shape(self, tensor: mx.array):
+#         B, L, D = tensor.shape
+#         tensor = tensor.reshape(B, L, self.num_heads, D // self.num_heads)
+#         return tensor.transpose(0, 2, 1, 3)
 
-    def __call__(self, x, mask):
-        q = self.query_proj(x)
-        k = self.key_proj(x)
-        v = self.value_proj(x)
-        q, k, v = map(self.shape, (q, k, v))
-        attn_out = mx.fast.scaled_dot_product_attention(
-            q, k, v, mask, self.scale
-        )
-        return self.out_proj(attn_out)
+#     def __call__(self, x, mask):
+#         q = self.query_proj(x)
+#         k = self.key_proj(x)
+#         v = self.value_proj(x)
+#         q, k, v = map(self.shape, (q, k, v))
+#         attn_out = mx.fast.scaled_dot_product_attention(
+#             q, k, v, mask, self.scale
+#         )
+#         return self.out_proj(attn_out)
 
 class TransformerEncoderLayer(nn.Module):
     """
@@ -49,13 +49,12 @@ class TransformerEncoderLayer(nn.Module):
         # layer_norm_eps: float = 1e-12,
     ):
         super().__init__()
-        # mlp_dims = mlp_dims or dims * 4
-        # self.attention = nn.MultiHeadAttention(
-        #     config.hidden_size, 
-        #     config.num_attention_heads, 
-        #     bias=True
-        # )
-        self.attention = FastAttention(config)
+        self.attention = nn.MultiHeadAttention(
+            config.hidden_size, 
+            config.num_attention_heads, 
+            bias=True
+        )
+        # self.attention = FastAttention(config)
         self.ln1 = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         self.ln2 = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         self.linear1 = nn.Linear(config.hidden_size, config.intermediate_size)
@@ -63,7 +62,7 @@ class TransformerEncoderLayer(nn.Module):
         self.gelu = nn.GELU()
 
     def __call__(self, x, mask):
-        attention_out = self.attention(x, mask) # x, x, x, mask
+        attention_out = self.attention(x, x, x, mask) # x, x, x, mask
         add_and_norm = self.ln1(x + attention_out)
 
         ff = self.linear1(add_and_norm)
