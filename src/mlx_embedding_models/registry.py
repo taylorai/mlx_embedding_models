@@ -54,8 +54,9 @@ registry = {
     },
     # SPARSE MODELS #
     "distilbert-splade": {
-        "repo": "andersonbcdefg/distilbert-splade-onnx",
+        "repo": "raphaelsty/distilbert-splade",
         "max_length": 512,
+        "lm_head": True,
         "pooling_strategy": "max",
         "ndim": 768,
     }

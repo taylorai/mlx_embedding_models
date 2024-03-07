@@ -154,7 +154,7 @@ class Bert(nn.Module):
         # mlm output
         if self.lm_head is not None:
             y = self.encoder(x, attention_mask)
-            return self.lm_head(y)
+            return self.lm_head(y), None # no pooler output
         
         # pooler output
         else:
