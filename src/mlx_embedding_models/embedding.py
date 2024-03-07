@@ -10,7 +10,7 @@ import tqdm
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 def pool(
-    pooling_strategy: Literal["mean", "cls", "first"],
+    pooling_strategy: Literal["mean", "cls", "first", "max"],
     normalize: bool,
     last_hidden_state: np.ndarray,  # B, L, D
     pooler_output: Optional[np.ndarray] = None,  # B, D
@@ -30,6 +30,10 @@ def pool(
         pooled = np.sum(
             last_hidden_state * np.expand_dims(mask, -1), axis=1
         ) / np.sum(mask, axis=-1, keepdims=True)
+    elif pooling_strategy == "max":
+        pooled = np.max(
+            last_hidden_state * np.expand_dims(mask, -1), axis=1
+        )
     elif pooling_strategy == "first":
         pooled = last_hidden_state[:, 0, :]
     elif pooling_strategy == "cls":
@@ -58,8 +62,9 @@ class EmbeddingModel:
         pooling_strategy: Literal["mean", "cls", "first"],
         normalize: bool,
         max_length: int,
+        lm_head: bool = False,
     ):
-        self.model = Bert.from_pretrained(model_path)
+        self.model = Bert.from_pretrained(model_path, lm_head=lm_head)
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
         self.pooling_strategy = pooling_strategy
         self.normalize = normalize
@@ -76,6 +81,7 @@ class EmbeddingModel:
             pooling_strategy=model_config["pooling_strategy"],
             normalize=normalize,
             max_length=model_config["max_length"],
+            lm_head=model_config.get("lm_head", False),
         )
     
     def _tokenize(self, sentences) -> ak.Array:
