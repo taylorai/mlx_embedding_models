@@ -30,7 +30,7 @@ class FastAttention(nn.Module):
         k = self.key_proj(x)
         v = self.value_proj(x)
         q, k, v = map(self.shape, (q, k, v))
-        attn_out = mx.scaled_dot_product_attention(
+        attn_out = mx.fast.scaled_dot_product_attention(
             q, k, v, mask, self.scale
         )
         return self.out_proj(attn_out)
