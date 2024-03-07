@@ -51,5 +51,12 @@ registry = {
         "max_length": 8192,
         "pooling_strategy": "first",
         "ndim": 1024
+    },
+    # SPARSE MODELS #
+    "distilbert-splade": {
+        "repo": "andersonbcdefg/distilbert-splade-onnx",
+        "max_length": 512,
+        "pooling_strategy": "max",
+        "ndim": 768,
     }
 }
