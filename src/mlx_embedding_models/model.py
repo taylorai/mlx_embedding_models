@@ -63,7 +63,7 @@ class TransformerEncoderLayer(nn.Module):
         self.gelu = nn.GELU()
 
     def __call__(self, x, mask):
-        attention_out = self.attention(x, x, x, mask)
+        attention_out = self.attention(x, mask) # x, x, x, mask
         add_and_norm = self.ln1(x + attention_out)
 
         ff = self.linear1(add_and_norm)
