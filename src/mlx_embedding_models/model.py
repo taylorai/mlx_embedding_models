@@ -108,7 +108,7 @@ class BertEmbeddings(nn.Module):
             token_types = self.token_type_embeddings(token_type_ids)
             embeddings = position + words + token_types
         else:
-            embeddings = position + words + token_types
+            embeddings = position + words
         return self.norm(embeddings)
     
 class LMHead(nn.Module):
