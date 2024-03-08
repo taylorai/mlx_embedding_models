@@ -1,4 +1,7 @@
-from transformers import BertModel, DistilBertModel, BertForMaskedLM, DistilBertForMaskedLM
+from transformers import (
+    BertModel, DistilBertModel, BertForMaskedLM, DistilBertForMaskedLM,
+    BertConfig, DistilBertConfig
+)
 
 def replace_key(key: str) -> str:
     key = key.replace(".layer.", ".layers.")
@@ -62,3 +65,35 @@ def convert_distilbert(distilbert_model: str, lm_head: bool = False):
     }
     # print([n for n, p in tensors.items()])
     return tensors
+
+def bert_config_from_distilbert(distilbert_config: DistilBertConfig) -> BertConfig:
+#     "attention_dropout": 0.1,
+#   "dim": 768,
+#   "dropout": 0.1,
+#   "hidden_dim": 3072,
+#   "initializer_range": 0.02,
+#   "max_position_embeddings": 512,
+#   "model_type": "distilbert",
+#   "n_heads": 12,
+#   "n_layers": 6,
+#   "pad_token_id": 0,
+#   "qa_dropout": 0.1,
+#   "seq_classif_dropout": 0.2,
+#   "sinusoidal_pos_embds": false,
+#   "tie_weights_": true,
+#   "transformers_version": "4.10.0.dev0",
+#   "vocab_size": 30522
+    return BertConfig(
+        vocab_size=distilbert_config.vocab_size,
+        hidden_size=distilbert_config.dim,
+        num_hidden_layers=distilbert_config.n_layers,
+        num_attention_heads=distilbert_config.n_heads,
+        intermediate_size=distilbert_config.hidden_dim,
+        hidden_act=distilbert_config.activation,
+        hidden_dropout_prob=distilbert_config.dropout,
+        attention_probs_dropout_prob=distilbert_config.attention_dropout,
+        max_position_embeddings=distilbert_config.max_position_embeddings,
+        type_vocab_size=0,
+        initializer_range=distilbert_config.initializer_range,
+        layer_norm_eps=1e-12,
+    )
