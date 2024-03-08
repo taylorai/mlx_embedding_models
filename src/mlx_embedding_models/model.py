@@ -91,7 +91,7 @@ class TransformerEncoder(nn.Module):
 
 
 class BertEmbeddings(nn.Module):
-    def __init__(self, config: Union[BertConfig, RobertaConfig]):
+    def __init__(self, config: Union[BertConfig, RobertaConfig, DistilBertConfig]):
         self.word_embeddings = nn.Embedding(config.vocab_size, config.hidden_size)
         self.token_type_embeddings = nn.Embedding(config.type_vocab_size, config.hidden_size) if hasattr(config, "type_vocab_size") else None
         self.position_embeddings = nn.Embedding(
@@ -176,6 +176,9 @@ class Bert(nn.Module):
         elif isinstance(config, DistilBertConfig):
             config = DistilBertConfig.from_pretrained(model_path)
             tensors = convert_distilbert(model_path, lm_head=lm_head)
+        # add layer norm epsilon if not present, i.e. distilbert
+        if not hasattr(config, "layer_norm_eps"):
+            config.layer_norm_eps = 1e-12
         model = cls(config)
         
         # use npz extension
