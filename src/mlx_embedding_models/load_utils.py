@@ -40,6 +40,7 @@ def replace_key_distilbert(key: str) -> str:
     key = key.replace("vocab_transform", "lm_head.dense")
     key = key.replace("vocab_layer_norm", "lm_head.ln")
     key = key.replace("vocab_projector", "lm_head.decoder")
+    key = key.replace("distilbert.", "")
 
     return key
 
