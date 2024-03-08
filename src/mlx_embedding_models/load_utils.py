@@ -66,7 +66,7 @@ def convert_distilbert(distilbert_model: str, lm_head: bool = False):
     tensors = {
         replace_key_distilbert(key): tensor.numpy() for key, tensor in model.state_dict().items()
     }
-    # print([n for n, p in tensors.items()])
+    print([n for n, p in tensors.items()])
     return tensors
 
 def bert_config_from_distilbert(distilbert_config: DistilBertConfig) -> BertConfig:

@@ -177,7 +177,10 @@ class Bert(nn.Module):
             config = DistilBertConfig.from_pretrained(model_path)
             config = bert_config_from_distilbert(config)
             tensors = convert_distilbert(model_path, lm_head=lm_head)
-        model = cls(config)
+        model = cls(config, lm_head=lm_head)
+
+        # print all keys in model
+        print(model)
         
         # use npz extension
         with tempfile.NamedTemporaryFile(suffix=".npz") as f:
