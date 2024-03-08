@@ -7,6 +7,7 @@ from typing import Literal, Optional
 import awkward as ak
 import mlx.core as mx
 import tqdm
+from scipy.sparse import csr_matrix
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 def pool(
@@ -182,5 +183,64 @@ class EmbeddingModel:
         return output_embeddings[reverse_indices]
     
 # TODO: implement this
-class SpladeModel:
-    pass
+class SpladeModel(EmbeddingModel):
+
+    @staticmethod
+    def _create_sparse_embedding(
+        activations: np.ndarray,
+        max_dims: int,
+    ):
+        B, V = activations.shape
+        topk_indices = np.argsort(activations, axis=-1)[:, -max_dims:] # B, max_dims
+        sparse_embeddings = np.zeros((B, V), dtype=np.float32)
+        for i in range(B):
+            sparse_embeddings[i, topk_indices[i]] = activations[i, topk_indices[i]]
+
+        return sparse_embeddings
+    
+    def encode(
+        self, 
+        sentences, 
+        batch_size=64,
+        max_dims="auto",
+        return_sparse=False,
+        show_progress=True, 
+        **kwargs
+    ):
+        # if return_numpy and return_sparse:
+        #     raise ValueError("Can't return both numpy and sparse embeddings")
+        tokens = self._tokenize(sentences)
+        sorted_tokens, reverse_indices = self._sort_inputs(tokens)
+        output_embeddings = None
+        for i in tqdm.tqdm(
+            range(0, len(sentences), batch_size),
+            disable=not show_progress,
+        ):
+            # slice out batch & convert to MLX tensors
+            batch = {
+                k: sorted_tokens[k][i:i + batch_size]
+                for k in sorted_tokens
+            }
+            batch = self._construct_batch(batch)
+            mlm_output, _ = self.model(**batch)
+            embs = pool(
+                "max",
+                False,
+                np.maximum(np.array(mlm_output), 0),
+                None
+            )
+            if output_embeddings is None:
+                output_embeddings = embs
+            else:
+                output_embeddings = np.concatenate(
+                    [output_embeddings, embs], axis=0
+                )
+        
+        # topk
+        max_dims = self.max_length if max_dims == "auto" else max_dims
+        sparse_embs = self._create_sparse_embedding(output_embeddings, max_dims)
+
+        if return_sparse:
+            return csr_matrix(sparse_embs[reverse_indices])
+        else:
+            return sparse_embs[reverse_indices]
