@@ -19,5 +19,6 @@ dependencies = [
     "mlx>=0.6.0",
     "awkward",
     "numpy",
+    "scipy",
     "tqdm"
 ]
