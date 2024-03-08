@@ -29,6 +29,7 @@ def replace_key(key: str) -> str:
 def replace_key_distilbert(key: str) -> str:
     key = key.replace(".layer.", ".layers.")
     key = key.replace("transformer.", "encoder.")
+    key = key.replace("embeddings.LayerNorm", "embeddings.norm")
     key = key.replace(".attention.q_lin.", ".attention.query_proj.")
     key = key.replace(".attention.k_lin.", ".attention.key_proj.")
     key = key.replace(".attention.v_lin.", ".attention.value_proj.")
