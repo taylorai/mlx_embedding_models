@@ -180,7 +180,7 @@ class Bert(nn.Module):
         model = cls(config, lm_head=lm_head)
 
         # print all keys in model
-        print(model)
+        # print(model)
         
         # use npz extension
         with tempfile.NamedTemporaryFile(suffix=".npz") as f:
