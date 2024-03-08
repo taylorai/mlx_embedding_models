@@ -143,8 +143,8 @@ class Bert(nn.Module):
     def __call__(
         self,
         input_ids: mx.array,
-        token_type_ids: mx.array,
-        attention_mask: mx.array = None,
+        token_type_ids: Optional[mx.array] = None,
+        attention_mask: Optional[mx.array] = None,
     ) -> Tuple[mx.array, mx.array]:
         x = self.embeddings(input_ids, token_type_ids)
 
