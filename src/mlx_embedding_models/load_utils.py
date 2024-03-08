@@ -41,6 +41,8 @@ def replace_key_distilbert(key: str) -> str:
     key = key.replace("vocab_layer_norm", "lm_head.ln")
     key = key.replace("vocab_projector", "lm_head.decoder")
 
+    return key
+
 
 def convert(bert_model: str, lm_head: bool = False):
     if not lm_head:
@@ -67,22 +69,6 @@ def convert_distilbert(distilbert_model: str, lm_head: bool = False):
     return tensors
 
 def bert_config_from_distilbert(distilbert_config: DistilBertConfig) -> BertConfig:
-#     "attention_dropout": 0.1,
-#   "dim": 768,
-#   "dropout": 0.1,
-#   "hidden_dim": 3072,
-#   "initializer_range": 0.02,
-#   "max_position_embeddings": 512,
-#   "model_type": "distilbert",
-#   "n_heads": 12,
-#   "n_layers": 6,
-#   "pad_token_id": 0,
-#   "qa_dropout": 0.1,
-#   "seq_classif_dropout": 0.2,
-#   "sinusoidal_pos_embds": false,
-#   "tie_weights_": true,
-#   "transformers_version": "4.10.0.dev0",
-#   "vocab_size": 30522
     return BertConfig(
         vocab_size=distilbert_config.vocab_size,
         hidden_size=distilbert_config.dim,
