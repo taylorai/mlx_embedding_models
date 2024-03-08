@@ -145,7 +145,7 @@ class EmbeddingModel:
     def encode(
         self, 
         sentences, 
-        batch_size=32, 
+        batch_size=64, 
         show_progress=True, 
         **kwargs
     ):
@@ -180,3 +180,7 @@ class EmbeddingModel:
                 )
 
         return output_embeddings[reverse_indices]
+    
+# TODO: implement this
+class SpladeModel:
+    pass
