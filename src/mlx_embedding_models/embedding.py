@@ -135,6 +135,8 @@ class EmbeddingModel:
         pad_id = self.tokenizer.pad_token_id
         max_length = int(max(ak.num(batch["input_ids"], axis=1)))
         for k in ["input_ids", "attention_mask", "token_type_ids"]:
+            if k not in batch:
+                continue
             tensor_batch[k] = mx.array(
                 self._pad_array(batch[k], pad_id, max_length)
             )
