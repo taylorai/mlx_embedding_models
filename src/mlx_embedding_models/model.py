@@ -104,7 +104,7 @@ class BertEmbeddings(nn.Module):
         position = self.position_embeddings(
             mx.broadcast_to(mx.arange(input_ids.shape[1]), input_ids.shape)
         )
-        if token_types is not None and self.token_type_embeddings is not None:
+        if token_type_ids is not None and self.token_type_embeddings is not None:
             token_types = self.token_type_embeddings(token_type_ids)
             embeddings = position + words + token_types
         else:
