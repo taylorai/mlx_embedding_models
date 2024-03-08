@@ -2,7 +2,7 @@
 # https://github.com/ml-explore/mlx-examples
 
 import tempfile
-from typing import Tuple, Union
+from typing import Tuple, Union, Optional
 import mlx.core as mx
 import mlx.nn as nn
 import numpy as np
@@ -93,20 +93,22 @@ class TransformerEncoder(nn.Module):
 class BertEmbeddings(nn.Module):
     def __init__(self, config: Union[BertConfig, RobertaConfig]):
         self.word_embeddings = nn.Embedding(config.vocab_size, config.hidden_size)
-        self.token_type_embeddings = nn.Embedding(config.type_vocab_size, config.hidden_size)
+        self.token_type_embeddings = nn.Embedding(config.type_vocab_size, config.hidden_size) if hasattr(config, "type_vocab_size") else None
         self.position_embeddings = nn.Embedding(
             config.max_position_embeddings, config.hidden_size
         )
         self.norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
 
-    def __call__(self, input_ids: mx.array, token_type_ids: mx.array) -> mx.array:
+    def __call__(self, input_ids: mx.array, token_type_ids: Optional[mx.array]) -> mx.array:
         words = self.word_embeddings(input_ids)
         position = self.position_embeddings(
             mx.broadcast_to(mx.arange(input_ids.shape[1]), input_ids.shape)
         )
-        token_types = self.token_type_embeddings(token_type_ids)
-
-        embeddings = position + words + token_types
+        if token_types is not None and self.token_type_embeddings is not None:
+            token_types = self.token_type_embeddings(token_type_ids)
+            embeddings = position + words + token_types
+        else:
+            embeddings = position + words + token_types
         return self.norm(embeddings)
     
 class LMHead(nn.Module):
