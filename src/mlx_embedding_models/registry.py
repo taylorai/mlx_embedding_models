@@ -59,5 +59,18 @@ registry = {
         "lm_head": True,
         "pooling_strategy": "max",
         "ndim": 768,
+    },
+    "neuralcherche-sparse-embed": {
+        "repo": "raphaelsty/neural-cherche-sparse-embed",
+        "max_length": 512,
+        "lm_head": True,
+        "pooling_strategy": "max",
+        "ndim": 768,
+    },
+    "bert-base-uncased": { # mainly here as a baseline
+        "repo": "bert-base-uncased",
+        "max_length": 512,
+        "pooling_strategy": "max",
+        "ndim": 768,
     }
 }
