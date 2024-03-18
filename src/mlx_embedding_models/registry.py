@@ -91,6 +91,14 @@ registry = {
         "normalize": False,
         "ndim": 768,
     },
+    "opensearch": {
+        "repo": "opensearch-project/opensearch-neural-sparse-encoding-doc-v1",
+        "max_length": 512,
+        "lm_head": True,
+        "pooling_strategy": "max",
+        "normalize": False,
+        "ndim": 768,
+    },
     "bert-base-uncased": { # mainly here as a baseline
         "repo": "bert-base-uncased",
         "max_length": 512,
