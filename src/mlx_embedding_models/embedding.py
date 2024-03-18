@@ -212,11 +212,7 @@ class SpladeModel(EmbeddingModel):
         model_config = registry[model_name]
         return cls(
             model_path=model_config["repo"],
-            pooling_strategy=model_config["pooling_strategy"],
-            normalize=model_config["normalize"],
-            max_length=model_config["max_length"],
-            lm_head=model_config.get("lm_head", False),
-            nomic_bert="nomic" in model_name,
+            top_k=top_k
         )
 
     @staticmethod
