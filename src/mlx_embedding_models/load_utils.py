@@ -26,6 +26,7 @@ def replace_key(key: str) -> str:
     key = key.replace(
         "cls.predictions.decoder",
         "lm_head.decoder")
+    key = key.replace("bert.", "")
     return key
 
 def replace_key_distilbert(key: str) -> str:
