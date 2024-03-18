@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from .model import Bert
+from .nomic_model import NomicBert
 from .registry import registry
 from transformers import AutoTokenizer
 from typing import Literal, Optional
@@ -60,12 +61,16 @@ class EmbeddingModel:
     def __init__(
         self,
         model_path: str,
-        pooling_strategy: Literal["mean", "cls", "first"],
+        pooling_strategy: Literal["mean", "cls", "first", "max"],
         normalize: bool,
         max_length: int,
+        nomic_bert: bool = False,
         lm_head: bool = False,
     ):
-        self.model = Bert.from_pretrained(model_path, lm_head=lm_head)
+        if nomic_bert:
+            self.model = NomicBert.from_pretrained(model_path, lm_head=lm_head)
+        else:
+            self.model = Bert.from_pretrained(model_path, lm_head=lm_head)
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
         self.pooling_strategy = pooling_strategy
         self.normalize = normalize
@@ -83,6 +88,7 @@ class EmbeddingModel:
             normalize=normalize,
             max_length=model_config["max_length"],
             lm_head=model_config.get("lm_head", False),
+            nomic_bert="nomic" in model_name,
         )
     
     def _tokenize(self, sentences) -> ak.Array:
@@ -181,34 +187,41 @@ class EmbeddingModel:
                 )
 
         return output_embeddings[reverse_indices]
-    
-# TODO: implement this
+
 class SpladeModel(EmbeddingModel):
+    def __init__(
+        self,
+        model_path: str,
+        top_k: int
+    ):
+        super().__init__(
+            model_path,
+            pooling_strategy="max",
+            normalize=False,
+            max_length=512,
+            nomic_bert=False,
+            lm_head=True
+        )
+        self.top_k = top_k
 
     @staticmethod
     def _create_sparse_embedding(
         activations: np.ndarray,
-        max_dims: int,
+        top_k: int,
     ):
         B, V = activations.shape
-        topk_indices = np.argsort(activations, axis=-1)[:, -max_dims:] # B, max_dims
-        sparse_embeddings = np.zeros((B, V), dtype=np.float32)
-        for i in range(B):
-            sparse_embeddings[i, topk_indices[i]] = activations[i, topk_indices[i]]
-
-        return sparse_embeddings
+        topk_indices = np.argpartition(activations, -top_k, axis=-1)[:, :-top_k]
+        activations[np.arange(B)[:, np.newaxis], topk_indices] = 0
+        return activations
     
     def encode(
         self, 
         sentences, 
-        batch_size=64,
-        max_dims="auto",
+        batch_size=16,
         return_sparse=False,
         show_progress=True, 
         **kwargs
     ):
-        # if return_numpy and return_sparse:
-        #     raise ValueError("Can't return both numpy and sparse embeddings")
         tokens = self._tokenize(sentences)
         sorted_tokens, reverse_indices = self._sort_inputs(tokens)
         output_embeddings = None
@@ -225,20 +238,21 @@ class SpladeModel(EmbeddingModel):
             mlm_output, _ = self.model(**batch)
             embs = pool(
                 "max",
-                False,
-                np.maximum(np.array(mlm_output), 0),
-                None
+                normalize=False,
+                last_hidden_state=np.array(mlm_output),
+                pooler_output=None,
+                mask=batch["attention_mask"],
             )
+            embs = np.log(1 + np.maximum(embs, 0))
             if output_embeddings is None:
                 output_embeddings = embs
             else:
                 output_embeddings = np.concatenate(
                     [output_embeddings, embs], axis=0
                 )
-        
-        # topk
-        max_dims = self.max_length if max_dims == "auto" else max_dims
-        sparse_embs = self._create_sparse_embedding(output_embeddings, max_dims)
+
+        if self.top_k > 0:
+            sparse_embs = self._create_sparse_embedding(output_embeddings, self.top_k)
 
         if return_sparse:
             return csr_matrix(sparse_embs[reverse_indices])
