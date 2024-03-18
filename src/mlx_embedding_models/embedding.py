@@ -91,21 +91,61 @@ class EmbeddingModel:
             nomic_bert="nomic" in model_name,
         )
     
-    def _tokenize(self, sentences) -> ak.Array:
+    def _tokenize(
+        self, 
+        sentences,
+        min_length: Optional[int] = None # if provided, we add [MASK] tokens to short queries
+    ) -> ak.Array:
         """
         Tokenize a list of sentences as a jagged array.
         """
-        tokenized = self.tokenizer(
+        tokenized = self.tokenizer.batch_encode_plus(
             sentences,
             padding=False,
             truncation=True,
-            max_length=self.max_length,
+            add_special_tokens=False,
+            max_length=self.max_length - 2,
         )
         
         # convert each key to a jagged array
         batch = {
             k: ak.Array(tokenized[k]) for k in tokenized
         }
+
+        # pad to min length with MASK tokens
+        if min_length is not None:
+            batch["input_ids"] = self._pad_array(batch["input_ids"], self.tokenizer.mask_token_id, min_length - 2)
+            batch["attention_mask"] = self._pad_array(batch["attention_mask"], 1, min_length - 2)
+            if "token_type_ids" in batch:
+                batch["token_type_ids"] = self._pad_array(batch["token_type_ids"], 0, min_length - 2)
+
+        # add special tokens
+        batch["input_ids"] = ak.concatenate(
+            [
+                ak.ones(len(batch["input_ids"]), 1) * self.tokenizer.cls_token_id,
+                batch["input_ids"],
+                ak.ones(len(batch["input_ids"]), 1) * self.tokenizer.sep_token_id,
+            ],
+            axis=1,
+        )
+        batch["attention_mask"] = ak.concatenate(
+            [
+                ak.ones(len(batch["attention_mask"]), 1),
+                batch["attention_mask"],
+                ak.ones(len(batch["attention_mask"]), 1),
+            ],
+            axis=1,
+        )
+        if "token_type_ids" in batch:
+            batch["token_type_ids"] = ak.concatenate(
+                [
+                    ak.zeros(len(batch["token_type_ids"]), 1),
+                    batch["token_type_ids"],
+                    ak.zeros(len(batch["token_type_ids"]), 1),
+                ],
+                axis=1,
+            )
+
         return batch
     
     def _sort_inputs(self, tokens: dict[str, ak.Array]) -> ak.Array:
@@ -134,13 +174,17 @@ class EmbeddingModel:
         arr = ak.fill_none(arr, pad_id)
         return arr.to_numpy()
     
-    def _construct_batch(self, batch: dict[str, ak.Array]) -> dict[str, mx.array]:
+    def _construct_batch(
+        self, 
+        batch: dict[str, ak.Array]
+    ) -> dict[str, mx.array]:
         """
         Pad a batch of tokenized sentences and convert to MLX tensors.
         """
         SEQ_LENS = [16, 32, 48, 64, 96, 128, 144, 160, 192, 256, 320, 384, 448, 512, self.max_length]
         tensor_batch = {}
         pad_id = self.tokenizer.pad_token_id
+        mask_id = self.tokenizer.mask_token_id
         longest = int(max(ak.num(batch["input_ids"], axis=1)))
         longest = SEQ_LENS[np.argmax(np.array(SEQ_LENS) > longest)]
         for k in ["input_ids", "attention_mask", "token_type_ids"]:
@@ -194,7 +238,8 @@ class SpladeModel(EmbeddingModel):
     def __init__(
         self,
         model_path: str,
-        top_k: int
+        top_k: int,
+        min_query_length: int = 16 # experimental: add MASK to short queries to allocate more computation
     ):
         super().__init__(
             model_path,
@@ -205,6 +250,7 @@ class SpladeModel(EmbeddingModel):
             lm_head=True
         )
         self.top_k = top_k
+        self.min_query_length = min_query_length
 
     @classmethod
     def from_registry(cls, model_name: str, top_k: int = 64):
@@ -234,7 +280,7 @@ class SpladeModel(EmbeddingModel):
         show_progress=True, 
         **kwargs
     ):
-        tokens = self._tokenize(sentences)
+        tokens = self._tokenize(sentences, min_length=self.min_query_length)
         sorted_tokens, reverse_indices = self._sort_inputs(tokens)
         output_embeddings = []
         for i in tqdm.tqdm(
