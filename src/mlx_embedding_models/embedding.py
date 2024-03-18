@@ -217,12 +217,12 @@ class SpladeModel(EmbeddingModel):
 
     @staticmethod
     def _create_sparse_embedding(
-        activations: np.ndarray,
+        activations: mx.array,
         top_k: int,
     ):
         B, V = activations.shape
-        topk_indices = np.argpartition(activations, -top_k, axis=-1)[:, :-top_k]
-        activations[np.arange(B)[:, np.newaxis], topk_indices] = 0
+        topk_indices = mx.argpartition(activations, -top_k, axis=-1)[:, :-top_k]
+        activations[mx.arange(B).reshape(-1, 1), topk_indices] = 0
         return activations
     
     def encode(
@@ -246,17 +246,20 @@ class SpladeModel(EmbeddingModel):
             }
             batch = self._construct_batch(batch)
             mlm_output, _ = self.model(**batch)
-            embs = pool(
-                "max",
-                normalize=False,
-                last_hidden_state=np.array(mlm_output, copy=False),
-                pooler_output=None,
-                mask=batch["attention_mask"],
-            )
+            # embs = pool(
+            #     "max",
+            #     normalize=False,
+            #     last_hidden_state=np.array(mlm_output, copy=False),
+            #     pooler_output=None,
+            #     mask=batch["attention_mask"],
+            # )
+            # try pooling with mlx instead
+            embs = mx.max(mlm_output * mx.expand_dims(batch["attention_mask"], -1), axis=1)
             del batch
-            embs = np.log(1 + np.maximum(embs, 0))
+            # embs = np.log(1 + np.maximum(embs, 0))
+            embs = mx.log(1 + mx.maximum(embs, 0))
             if self.top_k > 0:
                 embs = self._create_sparse_embedding(embs, self.top_k)
             output_embeddings.append(embs)
-        sparse_embs = np.concatenate(output_embeddings, axis=0)
-        return sparse_embs.astype(np.float16)[reverse_indices]
+        sparse_embs = mx.concatenate(output_embeddings, axis=0)
+        return np.array(sparse_embs, copy=False).astype(np.float16)[reverse_indices]
