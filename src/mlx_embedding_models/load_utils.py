@@ -26,6 +26,11 @@ def replace_key(key: str) -> str:
     key = key.replace(
         "cls.predictions.decoder",
         "lm_head.decoder")
+    key = key.replace("cls.predictions.transform.norm.weight",
+                        "lm_head.ln.weight")
+    key = key.replace("cls.predictions.transform.norm.bias",
+                          "lm_head.ln.bias")
+    key = key.replace("cls.predictions.bias", "lm_head.decoder.bias")              
     key = key.replace("bert.", "")
     return key
 
