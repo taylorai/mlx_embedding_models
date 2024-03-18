@@ -122,26 +122,26 @@ class EmbeddingModel:
         # add special tokens
         batch["input_ids"] = ak.concatenate(
             [
-                np.ones((len(batch["input_ids"]), 1)) * self.tokenizer.cls_token_id,
+                np.ones((len(batch["input_ids"]), 1), dtype=np.int64) * self.tokenizer.cls_token_id,
                 batch["input_ids"],
-                np.ones((len(batch["input_ids"]), 1)) * self.tokenizer.sep_token_id,
+                np.ones((len(batch["input_ids"]), 1), dtype=np.int64) * self.tokenizer.sep_token_id,
             ],
             axis=1,
         )
         batch["attention_mask"] = ak.concatenate(
             [
-                np.ones((len(batch["attention_mask"]), 1)),
+                np.ones((len(batch["attention_mask"]), 1), dtype=np.int64),
                 batch["attention_mask"],
-                np.ones((len(batch["attention_mask"]), 1)),
+                np.ones((len(batch["attention_mask"]), 1), dtype=np.int64),
             ],
             axis=1,
         )
         if "token_type_ids" in batch:
             batch["token_type_ids"] = ak.concatenate(
                 [
-                    np.zeros((len(batch["token_type_ids"]), 1)),
+                    np.zeros((len(batch["token_type_ids"]), 1), dtype=np.int64),
                     batch["token_type_ids"],
-                    np.zeros((len(batch["token_type_ids"]), 1)),
+                    np.zeros((len(batch["token_type_ids"]), 1), dtype=np.int64),
                 ],
                 axis=1,
             )
@@ -184,7 +184,6 @@ class EmbeddingModel:
         SEQ_LENS = [16, 32, 48, 64, 96, 128, 144, 160, 192, 256, 320, 384, 448, 512, self.max_length]
         tensor_batch = {}
         pad_id = self.tokenizer.pad_token_id
-        mask_id = self.tokenizer.mask_token_id
         longest = int(max(ak.num(batch["input_ids"], axis=1)))
         longest = SEQ_LENS[np.argmax(np.array(SEQ_LENS) > longest)]
         for k in ["input_ids", "attention_mask", "token_type_ids"]:
@@ -193,6 +192,7 @@ class EmbeddingModel:
             tensor_batch[k] = mx.array(
                 self._pad_array(batch[k], pad_id, longest)
             )
+            print(k, "is type", tensor_batch[k].dtype)
         return tensor_batch
     
     def encode(
