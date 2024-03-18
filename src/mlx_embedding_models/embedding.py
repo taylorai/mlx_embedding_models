@@ -132,7 +132,7 @@ class EmbeddingModel:
         """
         arr = ak.pad_none(arr, target=length, axis=-1, clip=True)
         arr = ak.fill_none(arr, pad_id)
-        return arr.to_list()
+        return arr.to_numpy()
     
     def _construct_batch(self, batch: dict[str, ak.Array]) -> dict[str, mx.array]:
         """
@@ -259,4 +259,4 @@ class SpladeModel(EmbeddingModel):
                 embs = self._create_sparse_embedding(embs, self.top_k)
             output_embeddings.append(embs)
         sparse_embs = np.concatenate(output_embeddings, axis=0)
-        return sparse_embs[reverse_indices]
+        return sparse_embs.astype(np.float16)[reverse_indices]
