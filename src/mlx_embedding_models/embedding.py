@@ -138,14 +138,16 @@ class EmbeddingModel:
         """
         Pad a batch of tokenized sentences and convert to MLX tensors.
         """
+        SEQ_LENS = [16, 32, 48, 64, 96, 128, 144, 160, 192, 256, 320, 384, 448, 512, self.max_length]
         tensor_batch = {}
         pad_id = self.tokenizer.pad_token_id
-        max_length = int(max(ak.num(batch["input_ids"], axis=1)))
+        longest = int(max(ak.num(batch["input_ids"], axis=1)))
+        longest = SEQ_LENS[np.argmax(SEQ_LENS > longest)]
         for k in ["input_ids", "attention_mask", "token_type_ids"]:
             if k not in batch:
                 continue
             tensor_batch[k] = mx.array(
-                self._pad_array(batch[k], pad_id, max_length)
+                self._pad_array(batch[k], pad_id, longest)
             )
         return tensor_batch
     
@@ -246,13 +248,6 @@ class SpladeModel(EmbeddingModel):
             }
             batch = self._construct_batch(batch)
             mlm_output, _ = self.model(**batch)
-            # embs = pool(
-            #     "max",
-            #     normalize=False,
-            #     last_hidden_state=np.array(mlm_output, copy=False),
-            #     pooler_output=None,
-            #     mask=batch["attention_mask"],
-            # )
             # try pooling with mlx instead
             embs = mx.max(mlm_output * mx.expand_dims(batch["attention_mask"], -1), axis=1)
             del batch
@@ -260,6 +255,7 @@ class SpladeModel(EmbeddingModel):
             embs = mx.log(1 + mx.maximum(embs, 0))
             if self.top_k > 0:
                 embs = self._create_sparse_embedding(embs, self.top_k)
+            mx.eval(embs)
             output_embeddings.append(embs)
         sparse_embs = mx.concatenate(output_embeddings, axis=0)
         return np.array(sparse_embs, copy=False).astype(np.float16)[reverse_indices]
