@@ -122,26 +122,26 @@ class EmbeddingModel:
         # add special tokens
         batch["input_ids"] = ak.concatenate(
             [
-                ak.ones(len(batch["input_ids"]), 1) * self.tokenizer.cls_token_id,
+                np.ones(len(batch["input_ids"]), 1) * self.tokenizer.cls_token_id,
                 batch["input_ids"],
-                ak.ones(len(batch["input_ids"]), 1) * self.tokenizer.sep_token_id,
+                np.ones(len(batch["input_ids"]), 1) * self.tokenizer.sep_token_id,
             ],
             axis=1,
         )
         batch["attention_mask"] = ak.concatenate(
             [
-                ak.ones(len(batch["attention_mask"]), 1),
+                np.ones(len(batch["attention_mask"]), 1),
                 batch["attention_mask"],
-                ak.ones(len(batch["attention_mask"]), 1),
+                np.ones(len(batch["attention_mask"]), 1),
             ],
             axis=1,
         )
         if "token_type_ids" in batch:
             batch["token_type_ids"] = ak.concatenate(
                 [
-                    ak.zeros(len(batch["token_type_ids"]), 1),
+                    np.zeros(len(batch["token_type_ids"]), 1),
                     batch["token_type_ids"],
-                    ak.zeros(len(batch["token_type_ids"]), 1),
+                    np.zeros(len(batch["token_type_ids"]), 1),
                 ],
                 axis=1,
             )
