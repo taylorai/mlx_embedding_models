@@ -192,7 +192,7 @@ class EmbeddingModel:
             tensor_batch[k] = mx.array(
                 self._pad_array(batch[k], pad_id, longest)
             )
-            print(k, "is type", tensor_batch[k].dtype)
+            # print(k, "is type", tensor_batch[k].dtype)
         return tensor_batch
     
     def encode(
