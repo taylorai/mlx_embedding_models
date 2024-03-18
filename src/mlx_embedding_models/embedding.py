@@ -142,7 +142,7 @@ class EmbeddingModel:
         tensor_batch = {}
         pad_id = self.tokenizer.pad_token_id
         longest = int(max(ak.num(batch["input_ids"], axis=1)))
-        longest = SEQ_LENS[np.argmax(SEQ_LENS > longest)]
+        longest = SEQ_LENS[np.argmax(np.array(SEQ_LENS) > longest)]
         for k in ["input_ids", "attention_mask", "token_type_ids"]:
             if k not in batch:
                 continue
