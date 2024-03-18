@@ -184,7 +184,6 @@ class EmbeddingModel:
         SEQ_LENS = [16, 32, 48, 64, 96, 128, 144, 160, 192, 256, 320, 384, 448, 512, self.max_length]
         tensor_batch = {}
         pad_id = self.tokenizer.pad_token_id
-        mask_id = self.tokenizer.mask_token_id
         longest = int(max(ak.num(batch["input_ids"], axis=1)))
         longest = SEQ_LENS[np.argmax(np.array(SEQ_LENS) > longest)]
         for k in ["input_ids", "attention_mask", "token_type_ids"]:
@@ -193,6 +192,7 @@ class EmbeddingModel:
             tensor_batch[k] = mx.array(
                 self._pad_array(batch[k], pad_id, longest)
             )
+            print(k, "is type", tensor_batch[k].dtype)
         return tensor_batch
     
     def encode(
