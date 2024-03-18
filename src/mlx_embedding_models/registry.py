@@ -105,5 +105,13 @@ registry = {
         "pooling_strategy": "max",
         "normalize": False,
         "ndim": 768,
+    },
+    "naver-splade-distilbert": {
+        "repo": "naver/splade-v3-distilbert",
+        "max_length": 512,
+        "lm_head": True,
+        "pooling_strategy": "max",
+        "normalize": False,
+        "ndim": 768,
     }
 }
