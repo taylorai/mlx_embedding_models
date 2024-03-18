@@ -253,14 +253,15 @@ class SpladeModel(EmbeddingModel):
         self.min_query_length = min_query_length
 
     @classmethod
-    def from_registry(cls, model_name: str, top_k: int = 64):
+    def from_registry(cls, model_name: str, top_k: int = 64, min_query_length: int = None):
         """
         Initialize from the model registry.
         """
         model_config = registry[model_name]
         return cls(
             model_path=model_config["repo"],
-            top_k=top_k
+            top_k=top_k,
+            min_query_length=min_query_length
         )
 
     @staticmethod
