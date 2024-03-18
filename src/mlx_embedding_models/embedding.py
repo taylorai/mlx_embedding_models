@@ -229,13 +229,12 @@ class SpladeModel(EmbeddingModel):
         self, 
         sentences, 
         batch_size=16,
-        return_sparse=False,
         show_progress=True, 
         **kwargs
     ):
         tokens = self._tokenize(sentences)
         sorted_tokens, reverse_indices = self._sort_inputs(tokens)
-        output_embeddings = None
+        output_embeddings = []
         for i in tqdm.tqdm(
             range(0, len(sentences), batch_size),
             disable=not show_progress,
@@ -247,25 +246,17 @@ class SpladeModel(EmbeddingModel):
             }
             batch = self._construct_batch(batch)
             mlm_output, _ = self.model(**batch)
+            del batch
             embs = pool(
                 "max",
                 normalize=False,
-                last_hidden_state=np.array(mlm_output),
+                last_hidden_state=np.array(mlm_output, copy=False),
                 pooler_output=None,
                 mask=batch["attention_mask"],
             )
             embs = np.log(1 + np.maximum(embs, 0))
-            if output_embeddings is None:
-                output_embeddings = embs
-            else:
-                output_embeddings = np.concatenate(
-                    [output_embeddings, embs], axis=0
-                )
-
-        if self.top_k > 0:
-            sparse_embs = self._create_sparse_embedding(output_embeddings, self.top_k)
-
-        if return_sparse:
-            return csr_matrix(sparse_embs[reverse_indices])
-        else:
-            return sparse_embs[reverse_indices]
+            if self.top_k > 0:
+                embs = self._create_sparse_embedding(embs, self.top_k)
+            output_embeddings.append(embs)
+        sparse_embs = np.concatenate(output_embeddings, axis=0)
+        return sparse_embs[reverse_indices]
