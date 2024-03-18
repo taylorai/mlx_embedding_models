@@ -39,6 +39,18 @@ registry = {
         "pooling_strategy": "first",
         "ndim": 768,
     },
+    "nomic-text-v1": {
+        "repo": "nomic-ai/nomic-embed-text-v1",
+        "max_length": 2048,
+        "pooling_strategy": "mean",
+        "ndim": 768,
+    },
+    "nomic-text-v1.5": {
+        "repo": "nomic-ai/nomic-embed-text-v1.5",
+        "max_length": 2048,
+        "pooling_strategy": "mean",
+        "ndim": 768,
+    },
     # 24 layers, 1024-dim
     "bge-large": {
         "repo": "BAAI/bge-large-en-v1.5",

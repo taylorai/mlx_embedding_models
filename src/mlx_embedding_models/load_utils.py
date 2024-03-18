@@ -1,5 +1,7 @@
 from transformers import (
-    BertModel, DistilBertModel, BertForMaskedLM, DistilBertForMaskedLM,
+    BertModel, DistilBertModel, 
+    BertForMaskedLM, DistilBertForMaskedLM,
+    AutoConfig, AutoModel, AutoModelForMaskedLM,
     BertConfig, DistilBertConfig
 )
 
@@ -45,6 +47,17 @@ def replace_key_distilbert(key: str) -> str:
 
     return key
 
+def replace_key_nomic(key: str) -> str:
+    key = key.replace("emb_ln", "embeddings.norm")
+    key = key.replace("bert.", "")
+    key = key.replace("cls.predictions.transform.dense.", "lm_head.dense.")
+    key = key.replace("cls.predictions.transform.LayerNorm.", "lm_head.ln.")
+    key = key.replace("cls.predictions.decoder", "lm_head.decoder")
+    key = key.replace("pooler.dense.", "pooler.")
+
+    return key
+
+
 
 def convert(bert_model: str, lm_head: bool = False):
     if not lm_head:
@@ -66,6 +79,20 @@ def convert_distilbert(distilbert_model: str, lm_head: bool = False):
     # save the tensors
     tensors = {
         replace_key_distilbert(key): tensor.numpy() for key, tensor in model.state_dict().items()
+    }
+    # print([n for n, p in tensors.items()])
+    return tensors
+
+def convert_nomic_bert(model: str, lm_head: bool = False):
+    if not lm_head:
+        model = AutoModel.from_pretrained(model, trust_remote_code=True, safe_serialization=True)
+    else:
+        model = AutoModelForMaskedLM.from_pretrained(
+            model, trust_remote_code=True, safe_serialization=True
+        )
+    # save the tensors
+    tensors = {
+        replace_key_nomic(key): tensor.numpy() for key, tensor in model.state_dict().items()
     }
     # print([n for n, p in tensors.items()])
     return tensors
