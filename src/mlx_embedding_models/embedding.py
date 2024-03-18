@@ -77,7 +77,7 @@ class EmbeddingModel:
         self.max_length = max_length
 
     @classmethod
-    def from_registry(cls, model_name: str, normalize: bool = True):
+    def from_registry(cls, model_name: str):
         """
         Initialize from the model registry.
         """
@@ -85,7 +85,7 @@ class EmbeddingModel:
         return cls(
             model_path=model_config["repo"],
             pooling_strategy=model_config["pooling_strategy"],
-            normalize=normalize,
+            normalize=model_config["normalize"],
             max_length=model_config["max_length"],
             lm_head=model_config.get("lm_head", False),
             nomic_bert="nomic" in model_name,
@@ -203,6 +203,21 @@ class SpladeModel(EmbeddingModel):
             lm_head=True
         )
         self.top_k = top_k
+
+    @classmethod
+    def from_registry(cls, model_name: str, top_k: int = 64):
+        """
+        Initialize from the model registry.
+        """
+        model_config = registry[model_name]
+        return cls(
+            model_path=model_config["repo"],
+            pooling_strategy=model_config["pooling_strategy"],
+            normalize=model_config["normalize"],
+            max_length=model_config["max_length"],
+            lm_head=model_config.get("lm_head", False),
+            nomic_bert="nomic" in model_name,
+        )
 
     @staticmethod
     def _create_sparse_embedding(
