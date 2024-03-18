@@ -246,7 +246,6 @@ class SpladeModel(EmbeddingModel):
             }
             batch = self._construct_batch(batch)
             mlm_output, _ = self.model(**batch)
-            del batch
             embs = pool(
                 "max",
                 normalize=False,
@@ -254,6 +253,7 @@ class SpladeModel(EmbeddingModel):
                 pooler_output=None,
                 mask=batch["attention_mask"],
             )
+            del batch
             embs = np.log(1 + np.maximum(embs, 0))
             if self.top_k > 0:
                 embs = self._create_sparse_embedding(embs, self.top_k)
