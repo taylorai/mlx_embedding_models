@@ -10,32 +10,32 @@ import mlx.core as mx
 import tqdm
 from scipy.sparse import csr_matrix
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-SEQ_LENS = [16, 64, 128, 256, 384, 512]
+SEQ_LENS = [16, 32, 48, 64, 96, 128, 144, 160, 192, 256, 320, 384, 448, 512]
 
 def pool(
     pooling_strategy: Literal["mean", "cls", "first", "max"],
     normalize: bool,
-    last_hidden_state: np.ndarray,  # B, L, D
-    pooler_output: Optional[np.ndarray] = None,  # B, D
-    mask: Optional[np.ndarray] = None,  # B, L
-) -> np.ndarray:
+    last_hidden_state: mx.array,  # B, L, D
+    pooler_output: Optional[mx.array] = None,  # B, D
+    mask: Optional[mx.array] = None,  # B, L
+) -> mx.array:
     """
     Pool output fron a sentence transformer model into one embedding.
-    Expects numpy arrays as input, so be sure to convert the MLX tensors.
+    Use MLX tensors as input, return MLX tensor as output.
     : last_hidden_state: B, L, D
     : pooler_output: B, D
     : mask: B, L
     """
     # hiddens: B, L, D; mask: B, L
     if mask is None:
-        mask = np.ones(last_hidden_state.shape[:2])
+        mask = mx.ones(last_hidden_state.shape[:2])
     if pooling_strategy == "mean":
-        pooled = np.sum(
-            last_hidden_state * np.expand_dims(mask, -1), axis=1
-        ) / np.sum(mask, axis=-1, keepdims=True)
+        pooled = mx.sum(
+            last_hidden_state * mx.expand_dims(mask, -1), axis=1
+        ) / mx.sum(mask, axis=-1, keepdims=True)
     elif pooling_strategy == "max":
-        pooled = np.max(
-            last_hidden_state * np.expand_dims(mask, -1), axis=1
+        pooled = mx.max(
+            last_hidden_state * mx.expand_dims(mask, -1), axis=1
         )
     elif pooling_strategy == "first":
         pooled = last_hidden_state[:, 0, :]
@@ -50,7 +50,7 @@ def pool(
             f"pooling strategy {pooling_strategy} not implemented"
         )
     if normalize:
-        pooled = pooled / np.linalg.norm(pooled, axis=-1, keepdims=True)
+        pooled = pooled / mx.linalg.norm(pooled, axis=-1, keepdims=True)
 
     return pooled
 
@@ -219,30 +219,35 @@ class EmbeddingModel:
         tokens = self._tokenize(sentences)
         sorted_tokens, reverse_indices = self._sort_inputs(tokens)
         output_embeddings = None
-        for i in tqdm.tqdm(
+        with tqdm.tqdm(
             range(0, len(sentences), batch_size),
             disable=not show_progress,
-        ):
-            # slice out batch & convert to MLX tensors
-            batch = {
-                k: sorted_tokens[k][i:i + batch_size]
-                for k in sorted_tokens
-            }
-            batch = self._construct_batch(batch)
-            last_hidden_state, pooler_output = self.model(**batch)
-            embs = pool(
-                self.pooling_strategy,
-                self.normalize,
-                np.array(last_hidden_state),
-                np.array(pooler_output),
-            )
-            if output_embeddings is None:
-                output_embeddings = embs
-            else:
-                output_embeddings = np.concatenate(
-                    [output_embeddings, embs], axis=0
+        ) as pbar:
+            for i in range(0, len(sentences), batch_size):
+                # slice out batch & convert to MLX tensors
+                batch = {
+                    k: sorted_tokens[k][i:i + batch_size]
+                    for k in sorted_tokens
+                }
+                batch = self._construct_batch(batch)
+                last_hidden_state, pooler_output = self.model(**batch)
+                embs = pool(
+                    self.pooling_strategy,
+                    self.normalize,
+                    last_hidden_state,
+                    pooler_output
                 )
+                if i == 0:
+                    output_embeddings = embs
+                else:
+                    output_embeddings = mx.concatenate([output_embeddings, embs], axis=0)
+                if i % 25 == 0:
+                    mx.eval(output_embeddings)
+                    pbar.n = i
+                    pbar.refresh()
 
+        output_embeddings = mx.concatenate(output_embeddings, axis=0)
+        output_embeddings = np.array(output_embeddings, copy=False)
         return output_embeddings[reverse_indices]
 
 class SpladeModel(EmbeddingModel):
