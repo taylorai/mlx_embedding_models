@@ -168,10 +168,11 @@ class EmbeddingModel:
         lengths = ak.num(tokens["input_ids"], axis=1)
         sorted_indices = np.argsort(-1 * lengths)
         reverse_indices = np.argsort(sorted_indices)
+        sorted_lengths = np.array(lengths[sorted_indices])
         return {
             k: tokens[k][sorted_indices, :]
             for k in tokens
-        }, reverse_indices
+        }, reverse_indices, sorted_lengths
     
     def _pad_array(
         self, 
@@ -217,15 +218,13 @@ class EmbeddingModel:
         Encode a list of sentences into embeddings.
         """
         tokens = self._tokenize(sentences)
-        sorted_tokens, reverse_indices = self._sort_inputs(tokens)
-        output_embeddings = None
-        for batch_idx, i in tqdm.tqdm(
-            enumerate(range(0, len(sentences), batch_size)), 
-            disable=not show_progress
-        ):
-            # slice out batch & convert to MLX tensors
+        sorted_tokens, reverse_indices, lengths = self._sort_inputs(tokens)
+        output_embeddings = []
+        pbar = tqdm.tqdm(total=len(sentences), disable=not show_progress)
+        for seq_len in SEQ_LENS:
+            # create batch of all sentences with length == seq_len
             batch = {
-                k: sorted_tokens[k][i:i + batch_size]
+                k: sorted_tokens[k][lengths == seq_len]
                 for k in sorted_tokens
             }
             batch = self._construct_batch(batch)
@@ -236,13 +235,11 @@ class EmbeddingModel:
                 last_hidden_state,
                 pooler_output
             )
-            if batch_idx == 0:
-                output_embeddings = embs
-            else:
-                output_embeddings = mx.concatenate([output_embeddings, embs], axis=0)
-            if batch_idx % 25 == 0:
-                mx.eval(output_embeddings)
-
+            mx.eval(embs)
+            output_embeddings.append(embs)
+            pbar.update(len(batch["input_ids"]))
+        
+        # concatenate embeddings and reverse the sort
         output_embeddings = mx.concatenate(output_embeddings, axis=0)
         output_embeddings = np.array(output_embeddings, copy=False)
         return output_embeddings[reverse_indices]
