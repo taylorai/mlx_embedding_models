@@ -169,6 +169,8 @@ class EmbeddingModel:
         sorted_indices = np.argsort(-1 * lengths)
         reverse_indices = np.argsort(sorted_indices)
         sorted_lengths = np.array(lengths[sorted_indices])
+        # round sorted lengths to nearest SEQ_LEN
+        sorted_lengths = np.array(SEQ_LENS[np.argmin(np.abs(np.array(SEQ_LENS) - sorted_lengths.reshape(-1, 1)), axis=1)])
         return {
             k: tokens[k][sorted_indices, :]
             for k in tokens
@@ -217,8 +219,10 @@ class EmbeddingModel:
         """
         Encode a list of sentences into embeddings.
         """
+        from collections import Counter
         tokens = self._tokenize(sentences)
         sorted_tokens, reverse_indices, lengths = self._sort_inputs(tokens)
+        print("lengths:", Counter(lengths))
         output_embeddings = []
         pbar = tqdm.tqdm(total=len(sentences), disable=not show_progress)
         for seq_len in SEQ_LENS:
