@@ -233,7 +233,6 @@ class EmbeddingModel:
                 k: sorted_tokens[k][lengths == seq_len]
                 for k in sorted_tokens
             }
-            chunk_outputs = []
 
             # iterate over batches within chunk
             for i in range(0, len(chunk["input_ids"]), batch_size):
@@ -249,14 +248,9 @@ class EmbeddingModel:
                     last_hidden_state,
                     pooler_output
                 )
-                chunk_outputs.append(embs)
-            
-            # concatenate chunk outputs
-            chunk_outputs = mx.concatenate(chunk_outputs, axis=0)
-            mx.eval(chunk_outputs)
-            output_embeddings.append(chunk_outputs)
-            pbar.update(len(chunk["input_ids"]))
-
+                output_embeddings.append(mx.eval(embs))
+                pbar.update(len(batch["input_ids"]))
+                del batch
             # we're done with this seqlen, clear the cache
             mx.metal.clear_cache()
         
