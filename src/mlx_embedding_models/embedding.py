@@ -10,6 +10,7 @@ import mlx.core as mx
 import tqdm
 from scipy.sparse import csr_matrix
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+SEQ_LENS = [16, 64, 128, 256, 384, 512]
 
 def pool(
     pooling_strategy: Literal["mean", "cls", "first", "max"],
@@ -192,7 +193,6 @@ class EmbeddingModel:
         """
         Pad a batch of tokenized sentences and convert to MLX tensors.
         """
-        SEQ_LENS = [16, 32, 48, 64, 96, 128, 144, 160, 192, 256, 320, 384, 448, 512, self.max_length]
         tensor_batch = {}
         pad_id = self.tokenizer.pad_token_id
         longest = int(max(ak.num(batch["input_ids"], axis=1)))
