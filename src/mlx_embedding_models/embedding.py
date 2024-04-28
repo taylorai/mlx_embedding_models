@@ -10,7 +10,7 @@ import mlx.core as mx
 import tqdm
 from scipy.sparse import csr_matrix
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-SEQ_LENS = np.arange(16, 128, 16).tolist() + np.arange(128, 512, 32).tolist()
+SEQ_LENS = np.arange(16, 128, 16).tolist() + np.arange(128, 512, 32).tolist() + [512]
 
 def pool(
     pooling_strategy: Literal["mean", "cls", "first", "max"],
