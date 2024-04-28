@@ -227,23 +227,37 @@ class EmbeddingModel:
         print("lengths:", Counter(lengths))
         output_embeddings = []
         pbar = tqdm.tqdm(total=len(sentences), disable=not show_progress)
-        for seq_len in SEQ_LENS:
-            # create batch of all sentences with length == seq_len
-            batch = {
+        for seq_len in sorted(SEQ_LENS, reverse=True): # biggest first
+            # create chunk of all sentences with length == seq_len
+            chunk = {
                 k: sorted_tokens[k][lengths == seq_len]
                 for k in sorted_tokens
             }
-            batch = self._construct_batch(batch)
-            last_hidden_state, pooler_output = self.model(**batch)
-            embs = pool(
-                self.pooling_strategy,
-                self.normalize,
-                last_hidden_state,
-                pooler_output
-            )
-            mx.eval(embs)
-            output_embeddings.append(embs)
-            pbar.update(len(batch["input_ids"]))
+            chunk_outputs = []
+
+            # iterate over batches within chunk
+            for i in range(0, len(chunk["input_ids"]), batch_size):
+                batch = {
+                    k: chunk[k][i:i + batch_size]
+                    for k in chunk
+                }
+                batch = self._construct_batch(batch)
+                last_hidden_state, pooler_output = self.model(**batch)
+                embs = pool(
+                    self.pooling_strategy,
+                    self.normalize,
+                    last_hidden_state,
+                    pooler_output
+                )
+                chunk_outputs.append(embs)
+            
+            # concatenate chunk outputs
+            chunk_outputs = mx.concatenate(chunk_outputs, axis=0)
+            mx.eval(chunk_outputs)
+            output_embeddings.append(chunk_outputs)
+            pbar.update(len(chunk["input_ids"]))
+
+            # we're done with this seqlen, clear the cache
             mx.metal.clear_cache()
         
         # concatenate embeddings and reverse the sort
