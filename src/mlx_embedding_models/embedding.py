@@ -10,7 +10,7 @@ import mlx.core as mx
 import tqdm
 from scipy.sparse import csr_matrix
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-SEQ_LENS = [16, 32, 48, 64, 96, 128, 144, 160, 192, 256, 320, 384, 448, 512]
+SEQ_LENS = np.arange(16, 128, 16).tolist() + np.arange(128, 512, 32).tolist()
 
 def pool(
     pooling_strategy: Literal["mean", "cls", "first", "max"],
@@ -248,7 +248,8 @@ class EmbeddingModel:
                     last_hidden_state,
                     pooler_output
                 )
-                output_embeddings.append(mx.eval(embs))
+                mx.eval(embs)
+                output_embeddings.append(embs)
                 pbar.update(len(batch["input_ids"]))
                 del batch
             # we're done with this seqlen, clear the cache
