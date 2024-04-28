@@ -219,32 +219,29 @@ class EmbeddingModel:
         tokens = self._tokenize(sentences)
         sorted_tokens, reverse_indices = self._sort_inputs(tokens)
         output_embeddings = None
-        with tqdm.tqdm(
-            range(0, len(sentences), batch_size),
-            disable=not show_progress,
-        ) as pbar:
-            for i in range(0, len(sentences), batch_size):
-                # slice out batch & convert to MLX tensors
-                batch = {
-                    k: sorted_tokens[k][i:i + batch_size]
-                    for k in sorted_tokens
-                }
-                batch = self._construct_batch(batch)
-                last_hidden_state, pooler_output = self.model(**batch)
-                embs = pool(
-                    self.pooling_strategy,
-                    self.normalize,
-                    last_hidden_state,
-                    pooler_output
-                )
-                if i == 0:
-                    output_embeddings = embs
-                else:
-                    output_embeddings = mx.concatenate([output_embeddings, embs], axis=0)
-                if i % 25 == 0:
-                    mx.eval(output_embeddings)
-                    pbar.n = i
-                    pbar.refresh()
+        for batch_idx, i in tqdm.tqdm(
+            enumerate(range(0, len(sentences), batch_size)), 
+            disable=not show_progress
+        ):
+            # slice out batch & convert to MLX tensors
+            batch = {
+                k: sorted_tokens[k][i:i + batch_size]
+                for k in sorted_tokens
+            }
+            batch = self._construct_batch(batch)
+            last_hidden_state, pooler_output = self.model(**batch)
+            embs = pool(
+                self.pooling_strategy,
+                self.normalize,
+                last_hidden_state,
+                pooler_output
+            )
+            if batch_idx == 0:
+                output_embeddings = embs
+            else:
+                output_embeddings = mx.concatenate([output_embeddings, embs], axis=0)
+            if batch_idx % 25 == 0:
+                mx.eval(output_embeddings)
 
         output_embeddings = mx.concatenate(output_embeddings, axis=0)
         output_embeddings = np.array(output_embeddings, copy=False)
