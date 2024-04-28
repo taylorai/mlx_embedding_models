@@ -170,7 +170,9 @@ class EmbeddingModel:
         reverse_indices = np.argsort(sorted_indices)
         sorted_lengths = np.array(lengths[sorted_indices])
         # round sorted lengths to nearest SEQ_LEN
-        sorted_lengths = np.array(SEQ_LENS[np.argmin(np.abs(np.array(SEQ_LENS) - sorted_lengths.reshape(-1, 1)), axis=1)])
+        sorted_lengths = np.array([
+            [x for x in SEQ_LENS if x >= l][0] for l in sorted_lengths
+        ])
         return {
             k: tokens[k][sorted_indices, :]
             for k in tokens
