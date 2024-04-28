@@ -244,6 +244,7 @@ class EmbeddingModel:
             mx.eval(embs)
             output_embeddings.append(embs)
             pbar.update(len(batch["input_ids"]))
+            mx.metal.clear_cache()
         
         # concatenate embeddings and reverse the sort
         output_embeddings = mx.concatenate(output_embeddings, axis=0)
