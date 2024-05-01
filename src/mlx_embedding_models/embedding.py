@@ -224,10 +224,11 @@ class EmbeddingModel:
         from collections import Counter
         tokens = self._tokenize(sentences)
         sorted_tokens, reverse_indices, lengths = self._sort_inputs(tokens)
-        print("lengths:", Counter(lengths))
+        # print("lengths:", Counter(lengths))
         output_embeddings = []
         pbar = tqdm.tqdm(total=len(sentences), disable=not show_progress)
         for seq_len in sorted(SEQ_LENS, reverse=True): # biggest first
+            pbar.set_postfix({"seq_len": seq_len})
             # create chunk of all sentences with length == seq_len
             chunk = {
                 k: sorted_tokens[k][lengths == seq_len]
