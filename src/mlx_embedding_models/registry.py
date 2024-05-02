@@ -22,6 +22,13 @@ registry = {
         "normalize": True,
         "ndim": 384,
     },
+    "snowflake-xs": {
+        "repo": "Snowflake/snowflake-arctic-embed-xs",
+        "max_length": 512,
+        "pooling_strategy": "cls",
+        "normalize": True,
+        "ndim": 384,
+    },
     # 12 layers, 384-dim
     "minilm-l12": {
         "repo": "sentence-transformers/all-MiniLM-L12-v2",
