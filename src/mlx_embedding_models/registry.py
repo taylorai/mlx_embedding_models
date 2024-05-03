@@ -44,6 +44,13 @@ registry = {
         "normalize": True,
         "ndim": 384,
     },
+    "multilingual-e5-small": {
+        "repo": "intfloat/multilingual-e5-small",
+        "max_length": 512,
+        "pooling_strategy": "mean",
+        "normalize": True,
+        "ndim": 384,
+    },
     # 12 layers, 768-dim
     "bge-base": {
         "repo": "BAAI/bge-base-en-v1.5",
