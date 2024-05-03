@@ -25,7 +25,7 @@ registry = {
     "snowflake-xs": {
         "repo": "Snowflake/snowflake-arctic-embed-xs",
         "max_length": 512,
-        "pooling_strategy": "cls",
+        "pooling_strategy": "first",
         "normalize": True,
         "ndim": 384,
     },
