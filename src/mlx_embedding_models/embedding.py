@@ -18,6 +18,7 @@ def pool(
     last_hidden_state: mx.array,  # B, L, D
     pooler_output: Optional[mx.array] = None,  # B, D
     mask: Optional[mx.array] = None,  # B, L
+    apply_ln: bool = False,
 ) -> mx.array:
     """
     Pool output fron a sentence transformer model into one embedding.
@@ -49,6 +50,9 @@ def pool(
         raise NotImplementedError(
             f"pooling strategy {pooling_strategy} not implemented"
         )
+    if apply_ln:
+        pooled = mx.fast.layer_norm(pooled, None, None, 1e-5)
+
     if normalize:
         pooled = pooled / mx.linalg.norm(pooled, axis=-1, keepdims=True)
 
@@ -67,6 +71,7 @@ class EmbeddingModel:
         max_length: int,
         nomic_bert: bool = False,
         lm_head: bool = False,
+        apply_ln: bool = False,
     ):
         if nomic_bert:
             self.model = NomicBert.from_pretrained(model_path, lm_head=lm_head)
@@ -76,6 +81,8 @@ class EmbeddingModel:
         self.pooling_strategy = pooling_strategy
         self.normalize = normalize
         self.max_length = max_length
+
+        self.apply_ln = apply_ln
 
     @classmethod
     def from_registry(cls, model_name: str):
@@ -90,6 +97,7 @@ class EmbeddingModel:
             max_length=model_config["max_length"],
             lm_head=model_config.get("lm_head", False),
             nomic_bert="nomic" in model_name,
+            apply_ln=model_config.get("apply_ln", False),
         )
     
     def _tokenize(
@@ -249,7 +257,8 @@ class EmbeddingModel:
                     self.normalize,
                     last_hidden_state,
                     pooler_output,
-                    mask=batch.get("attention_mask", None)
+                    mask=batch.get("attention_mask", None),
+                    apply_ln=self.apply_ln,
                 )
                 mx.eval(embs)
                 output_embeddings.append(embs)

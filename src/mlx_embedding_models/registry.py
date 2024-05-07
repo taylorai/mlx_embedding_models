@@ -72,6 +72,7 @@ registry = {
         "pooling_strategy": "mean",
         "normalize": True,
         "ndim": 768,
+        "apply_ln": True,
     },
     # 24 layers, 1024-dim
     "bge-large": {
