@@ -65,6 +65,56 @@ class NomicBertMLP(nn.Module):
         y = y * self.activation(gate)
         y = self.fc2(y)
         return y
+
+
+class NomicRoPE(nn.Module):
+    def __init__(self, dims, base=10000.0, scale=1.0, offset=0):
+        super().__init__()
+        self.dims = dims
+        self.base = base
+        self.scale = scale
+        self.offset = offset
+        
+    def __call__(self, x, offset=0):
+        if x.ndim < 3:
+            raise ValueError(f"[rope] Input must have at least 3 dimensions but got input with {x.ndim} dimensions.")
+
+        scale = self.scale
+        base = self.base
+        dims = self.dims
+
+        
+        shape = x.shape
+        N = x.shape[1] + offset
+        
+        # Compute sines and cosines
+        half_dims = dims // 2
+        positions = mx.arange(offset, N, dtype=x.dtype) * scale
+        freqs = mx.arange(0, half_dims, dtype=x.dtype)
+        freqs = mx.exp(-freqs * mx.array(base).log() / half_dims)
+        theta = mx.expand_dims(positions, 1) * mx.expand_dims(freqs, 0)
+        coss = mx.cos(theta)
+        sins = mx.sin(theta)
+
+        def rotate_half(x):
+            x1, x2 = mx.split(x, 2, axis=-1)
+            return mx.concatenate((-x2, x1), axis=-1)
+        
+        def apply_rope(x, coss, sins):
+            return x * coss + rotate_half(x) * sins
+        
+        out_s = list(x.shape)
+        out_s[-1] = half_dims
+        out_s[-1] = dims
+        repeated_cos = mx.tile(coss, (1, 2))
+        coss = repeated_cos.reshape(coss.shape[:-1] + (1, 2 * coss.shape[-1]))
+
+        repeated_sin = mx.tile(sins, (1, 2))
+        sins = repeated_sin.reshape(sins.shape[:-1] + (1, 2 * sins.shape[-1]))
+        
+        out = apply_rope(x, coss, sins)
+        
+        return mx.reshape(out, shape)
     
 class NomicBertAttention(nn.Module):
     def __init__(self, config: AutoConfig):
@@ -77,9 +127,8 @@ class NomicBertAttention(nn.Module):
         self.rotary_emb_dim = int(self.head_dim * config.rotary_emb_fraction)
         
         if self.rotary_emb_dim > 0:
-            self.rotary_emb = nn.RoPE(
+            self.rotary_emb = NomicRoPE(
                 dims=self.rotary_emb_dim,
-                traditional=config.rotary_emb_interleaved,
                 base=config.rotary_emb_base, # increase to extrapolate to docs > 2048 tokens
                 scale=1.0
             )
@@ -145,7 +194,7 @@ class NomicBertEncoder(nn.Module):
         super().__init__()
         self.layers = [
             NomicBertLayer(config)
-            for i in range(config.n_layer)
+            for _ in range(config.n_layer)
         ]
 
     def __call__(self, x, mask):
@@ -189,7 +238,7 @@ class NomicBert(nn.Module):
         token_type_ids: Optional[mx.array] = None,
         attention_mask: Optional[mx.array] = None,
     ) -> Tuple[mx.array, mx.array]:
-        x = self.embeddings(input_ids, token_type_ids)
+        x = self.embeddings(input_ids, token_type_ids=token_type_ids)
 
         if attention_mask is not None:
             # convert 0's to -infs, 1's to 0's, and make it broadcastable
