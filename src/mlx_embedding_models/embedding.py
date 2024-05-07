@@ -19,6 +19,7 @@ def pool(
     pooler_output: Optional[mx.array] = None,  # B, D
     mask: Optional[mx.array] = None,  # B, L
     apply_ln: bool = False,
+    dimension: int = None
 ) -> mx.array:
     """
     Pool output fron a sentence transformer model into one embedding.
@@ -52,6 +53,10 @@ def pool(
         )
     if apply_ln:
         pooled = mx.fast.layer_norm(pooled, None, None, 1e-5)
+
+    if dimension is not None:
+        # truncate if trained with matryoshka
+        pooled = pooled[:, :dimension]
 
     if normalize:
         pooled = pooled / mx.linalg.norm(pooled, axis=-1, keepdims=True)
@@ -259,6 +264,7 @@ class EmbeddingModel:
                     pooler_output,
                     mask=batch.get("attention_mask", None),
                     apply_ln=self.apply_ln,
+                    dimension=kwargs.get("dimension", None),
                 )
                 mx.eval(embs)
                 output_embeddings.append(embs)
