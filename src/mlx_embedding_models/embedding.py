@@ -243,11 +243,13 @@ class EmbeddingModel:
                 }
                 batch = self._construct_batch(batch)
                 last_hidden_state, pooler_output = self.model(**batch)
+                # TODO: pooling bug due to not using mask
                 embs = pool(
                     self.pooling_strategy,
                     self.normalize,
                     last_hidden_state,
-                    pooler_output
+                    pooler_output,
+                    mask=batch.get("attention_mask", None)
                 )
                 mx.eval(embs)
                 output_embeddings.append(embs)
