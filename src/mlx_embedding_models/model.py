@@ -6,34 +6,8 @@ from typing import Tuple, Union, Optional
 import mlx.core as mx
 import mlx.nn as nn
 import numpy as np
-from transformers import AutoConfig, BertConfig, RobertaConfig, DistilBertConfig
+from transformers import AutoConfig, BertConfig, RobertaConfig, DistilBertConfig, XLMRobertaConfig
 from .load_utils import convert, convert_distilbert, bert_config_from_distilbert
-
-
-# class FastAttention(nn.Module):
-#     def __init__(self, config: Union[BertConfig, RobertaConfig]):
-#         super().__init__()
-#         self.num_heads = config.num_attention_heads
-#         self.query_proj = nn.Linear(config.hidden_size, config.hidden_size, bias=True)
-#         self.key_proj = nn.Linear(config.hidden_size, config.hidden_size, bias=True)
-#         self.value_proj = nn.Linear(config.hidden_size, config.hidden_size, bias=True)
-#         self.out_proj = nn.Linear(config.hidden_size, config.hidden_size, bias=True)
-#         self.scale = 1 / (config.hidden_size ** 0.5)
-    
-#     def shape(self, tensor: mx.array):
-#         B, L, D = tensor.shape
-#         tensor = tensor.reshape(B, L, self.num_heads, D // self.num_heads)
-#         return tensor.transpose(0, 2, 1, 3)
-
-#     def __call__(self, x, mask):
-#         q = self.query_proj(x)
-#         k = self.key_proj(x)
-#         v = self.value_proj(x)
-#         q, k, v = map(self.shape, (q, k, v))
-#         attn_out = mx.fast.scaled_dot_product_attention(
-#             q, k, v, mask, self.scale
-#         )
-#         return self.out_proj(attn_out)
 
 class TransformerEncoderLayer(nn.Module):
     """
@@ -177,6 +151,11 @@ class Bert(nn.Module):
             config = DistilBertConfig.from_pretrained(model_path)
             config = bert_config_from_distilbert(config)
             tensors = convert_distilbert(model_path, lm_head=lm_head)
+        elif isinstance(config, XLMRobertaConfig):
+            config = XLMRobertaConfig.from_pretrained(model_path)
+            tensors = convert(model_path, lm_head=lm_head)
+        else:
+            raise ValueError(f"Config {config} not supported")
         model = cls(config, lm_head=lm_head)
 
         # print all keys in model
