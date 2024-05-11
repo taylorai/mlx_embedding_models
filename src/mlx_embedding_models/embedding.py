@@ -7,7 +7,7 @@ from transformers import AutoTokenizer
 from typing import Literal, Optional
 import awkward as ak
 import mlx.core as mx
-import tqdm
+from tqdm.auto import tqdm
 from scipy.sparse import csr_matrix
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 SEQ_LENS = np.arange(16, 128, 16).tolist() + np.arange(128, 512, 32).tolist() + [512]
@@ -239,7 +239,7 @@ class EmbeddingModel:
         sorted_tokens, reverse_indices, lengths = self._sort_inputs(tokens)
         # print("lengths:", Counter(lengths))
         output_embeddings = []
-        pbar = tqdm.tqdm(total=len(sentences), disable=not show_progress)
+        pbar = tqdm(total=len(sentences), disable=not show_progress)
         for seq_len in sorted(SEQ_LENS, reverse=True): # biggest first
             pbar.set_postfix({"seq_len": seq_len})
             # create chunk of all sentences with length == seq_len
@@ -328,7 +328,7 @@ class SpladeModel(EmbeddingModel):
         tokens = self._tokenize(sentences, min_length=self.min_query_length)
         sorted_tokens, reverse_indices = self._sort_inputs(tokens)
         output_embeddings = []
-        for i in tqdm.tqdm(
+        for i in tqdm(
             range(0, len(sentences), batch_size),
             disable=not show_progress,
         ):
