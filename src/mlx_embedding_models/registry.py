@@ -82,6 +82,13 @@ registry = {
         "normalize": True,
         "ndim": 1024,
     },
+    "snowflake-lg": {
+        'repo': 'Snowflake/snowflake-arctic-embed-l',
+        'max_length': 512,
+        'pooling_strategy': 'first',
+        'normalize': True,
+        'ndim': 1024,
+    },
     "bge-m3": {
         "repo": "BAAI/bge-m3",
         "max_length": 8192,
