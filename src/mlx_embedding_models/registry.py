@@ -96,6 +96,13 @@ registry = {
         "normalize": True,
         "ndim": 1024
     },
+    "mixedbread-large": {
+        "repo": 'mixedbread-ai/mxbai-embed-large-v1',
+        "max_length": 512,
+        "pooling_strategy": "first",
+        "normalize": True,
+        "ndim": 1024
+    },
     # SPARSE MODELS #
     "distilbert-splade": {
         "repo": "raphaelsty/distilbert-splade",
