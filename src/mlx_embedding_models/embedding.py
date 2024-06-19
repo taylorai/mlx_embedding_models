@@ -128,7 +128,7 @@ class EmbeddingModel:
         if os.path.exists(model_name_or_path):
             model_path = model_name_or_path
         else:
-            model_path = snapshot_download(model_name_or_path)
+            model_path = snapshot_download(model_name_or_path, ignore_patterns=["*.onnx"])
         try:
             st_config = json.load(open(os.path.join(model_path, "1_Pooling/config.json")))
             # {
