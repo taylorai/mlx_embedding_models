@@ -1,8 +1,10 @@
 import os
+import json
 import numpy as np
 from .model import Bert
 from .nomic_model import NomicBert
 from .registry import registry
+from huggingface_hub import snapshot_download
 from transformers import AutoTokenizer
 from typing import Literal, Optional
 import awkward as ak
@@ -76,7 +78,7 @@ class EmbeddingModel:
         max_length: int,
         nomic_bert: bool = False,
         lm_head: bool = False,
-        apply_ln: bool = False,
+        apply_ln: bool = False
     ):
         if nomic_bert:
             self.model = NomicBert.from_pretrained(model_path, lm_head=lm_head)
@@ -103,6 +105,60 @@ class EmbeddingModel:
             lm_head=model_config.get("lm_head", False),
             nomic_bert="nomic" in model_name,
             apply_ln=model_config.get("apply_ln", False),
+        )
+    
+    @classmethod
+    def from_finetuned(cls, base_model_name: str, finetuned_model_path: str):
+        """
+        Initialize from a finetuned model.
+        """
+        if "nomic" in base_model_name:
+            raise NotImplementedError("Nomic models not supported for finetuning")
+        base_model = cls.from_registry(base_model_name)
+        base_model.model = Bert.from_pretrained(finetuned_model_path)
+        return base_model
+    
+    @classmethod
+    def from_pretrained(cls, model_name_or_path: str):
+        """
+        Initialize from local or Huggingface model repository, using whatever
+        Sentence Transformer config is present in that repository. This only works
+        with BERT-like dense models for now (no Nomic or SPLADE models).
+        """
+        if os.path.exists(model_name_or_path):
+            model_path = model_name_or_path
+        else:
+            model_path = snapshot_download(model_name_or_path)
+        try:
+            st_config = json.load(open(os.path.join(model_path, "1_Pooling/config.json")))
+            # {
+            #     "word_embedding_dimension": 384,
+            #     "pooling_mode_cls_token": true,
+            #     "pooling_mode_mean_tokens": false,
+            #     "pooling_mode_max_tokens": false,
+            #     "pooling_mode_mean_sqrt_len_tokens": false,
+            #     "pooling_mode_weightedmean_tokens": false,
+            #     "pooling_mode_lasttoken": false,
+            #     "include_prompt": true
+            # }
+            if st_config["pooling_mode_cls_token"]:
+                pooling_strategy = "first" # for mlx_embedding_models, cls refers to pooler output
+            elif st_config["pooling_mode_mean_tokens"]:
+                pooling_strategy = "mean"
+            elif st_config["pooling_mode_max_tokens"]:
+                pooling_strategy = "max"
+            else:
+                raise ValueError("Unsupported or missing pooling strategy.")
+        except FileNotFoundError:
+            print("WARNING: No sentence-transformers config found. Using CLS token for pooling.")
+            pooling_strategy = "first"
+        base_model_config = json.load(open(os.path.join(model_path, "config.json")))
+        max_length = base_model_config.get("max_position_embeddings", 512) # sane default
+        return cls(
+            model_path=model_path,
+            pooling_strategy=pooling_strategy,
+            normalize=True,
+            max_length=max_length
         )
     
     def _tokenize(
