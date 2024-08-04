@@ -393,6 +393,23 @@ class SpladeModel(EmbeddingModel):
                 k: sorted_tokens[k][i:i + batch_size]
                 for k in sorted_tokens
             }
+            #     File ~/venvs/nlp/lib/python3.10/site-packages/mlx_embedding_models/embedding.py:385, in SpladeModel.encode(self, sentences, batch_size, show_progress, **kwargs)
+#     377 def encode(
+#     378     self, 
+#     379     sentences, 
+#    (...)
+#     382     **kwargs
+#     383 ):
+#     384     tokens = self._tokenize(sentences, min_length=self.min_query_length)
+# --> 385     sorted_tokens, reverse_indices = self._sort_inputs(tokens)
+#     386     output_embeddings = []
+#     387     for i in tqdm(
+#     388         range(0, len(sentences), batch_size),
+#     389         disable=not show_progress,
+#     390     ):
+#     391         # slice out batch & convert to MLX tensors
+
+# ValueError: too many values to unpack (expected 2)
             batch = self._construct_batch(batch)
             mlm_output, _ = self.model(**batch)
             # try pooling with mlx instead
