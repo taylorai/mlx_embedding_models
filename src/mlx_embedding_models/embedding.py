@@ -332,7 +332,7 @@ class EmbeddingModel:
         # concatenate embeddings and reverse the sort
         output_embeddings = mx.concatenate(output_embeddings, axis=0)
         output_embeddings = np.array(output_embeddings, copy=False)
-        return output_embeddings[reverse_indices]
+        return output_embeddings[reverse_indices], tokens
 
 class SpladeModel(EmbeddingModel):
     def __init__(
@@ -422,4 +422,4 @@ class SpladeModel(EmbeddingModel):
             mx.eval(embs)
             output_embeddings.append(embs)
         sparse_embs = mx.concatenate(output_embeddings, axis=0)
-        return np.array(sparse_embs, copy=False).astype(np.float16)[reverse_indices]
+        return np.array(sparse_embs, copy=False).astype(np.float16)[reverse_indices], tokens
